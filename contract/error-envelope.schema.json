@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-action-layer/contract/error-envelope.schema.json",
+  "title": "Error Envelope",
+  "description": "Every failure this action can produce MUST be mapped to exactly this shape before the action is considered wrapped (constitution.md, Article 2). The point of every field is that an agent can act on it without a human present to interpret a status code and a sentence.",
+  "type": "object",
+  "required": ["ok", "error"],
+  "properties": {
+    "ok": {
+      "const": false
+    },
+    "error": {
+      "type": "object",
+      "required": ["category", "code", "message", "retryable"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "validation",
+            "auth",
+            "not_found",
+            "conflict",
+            "rate_limited",
+            "guardrail_blocked",
+            "upstream_unavailable",
+            "server_error"
+          ],
+          "description": "Coarse bucket an agent can branch on without parsing prose. 'guardrail_blocked' is specific to this layer — it means the Guardrail Contract stopped the call (missing/expired confirmation, dry-run required first), not that the underlying API rejected it."
+        },
+        "code": {
+          "type": "string",
+          "description": "Stable, specific machine-readable code for this exact failure (e.g. 'insufficient_funds', 'refund_window_expired'), not a restatement of the HTTP status."
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable explanation, for logs and for a human-in-the-loop reviewing what happened. Not the primary field an agent should parse."
+        },
+        "retryable": {
+          "type": "boolean",
+          "description": "MUST be set explicitly, never omitted or left for the agent to guess from the status code."
+        },
+        "fixHint": {
+          "type": "object",
+          "description": "Present when the failure is something the agent can correct and retry itself. Absent when it can't (e.g. a genuine server_error).",
+          "properties": {
+            "field": {
+              "type": "string",
+              "description": "The input field that needs to change, if applicable (e.g. 'amount')."
+            },
+            "problem": {
+              "type": "string",
+              "description": "What's wrong with it, stated as a constraint (e.g. 'exceeds remaining refundable balance of 42.00')."
+            },
+            "suggestedValue": {
+              "description": "A corrected value or range the agent can use to retry, when one can be computed. Any type — matches the field's own schema type."
+            }
+          }
+        },
+        "retryAfterMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Present for rate_limited or transient upstream_unavailable failures. How long to wait before retrying."
+        },
+        "originalStatus": {
+          "type": ["string", "integer"],
+          "description": "The underlying API's own status/code, preserved for debugging and audit — never the primary signal the agent should branch on."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "ok": false,
+      "error": {
+        "category": "validation",
+        "code": "refund_exceeds_balance",
+        "message": "Requested refund of 120.00 exceeds the order's remaining refundable balance.",
+        "retryable": true,
+        "fixHint": {
+          "field": "amount",
+          "problem": "exceeds remaining refundable balance",
+          "suggestedValue": 42.0
+        },
+        "originalStatus": 422
+      }
+    },
+    {
+      "ok": false,
+      "error": {
+        "category": "guardrail_blocked",
+        "code": "confirmation_required",
+        "message": "This action is consequential and requires a confirmed dry-run before it can execute.",
+        "retryable": true,
+        "fixHint": {
+          "field": "confirmationToken",
+          "problem": "missing or expired",
+          "suggestedValue": null
+        }
+      }
+    }
+  ]
+}

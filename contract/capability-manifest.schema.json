@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-action-layer/contract/capability-manifest.schema.json",
+  "title": "Capability Manifest Entry",
+  "description": "One agent-callable action. This is the ONLY discovery surface an agent sees for this action — do not maintain a separate, shorter description anywhere else in the stack.",
+  "type": "object",
+  "required": [
+    "name",
+    "intent",
+    "whenNotToUse",
+    "sideEffects",
+    "inputSchema",
+    "outputSchema",
+    "specRef"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Stable, unique action identifier. Verb-first (e.g. 'issue_refund', not 'refund' or 'refunds_create')."
+    },
+    "intent": {
+      "type": "string",
+      "minLength": 20,
+      "description": "Written for an agent deciding whether to call this action right now. State what it does and when to use it. This is prose for a model, not for a human skimming API docs — be concrete about triggering situations, not just mechanically restating the endpoint name."
+    },
+    "whenNotToUse": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Explicitly rule out adjacent/confusable actions. Required, not optional — most agent misuse is picking the almost-right tool, and this field is what prevents it."
+    },
+    "sideEffects": {
+      "type": "string",
+      "enum": ["none", "idempotent", "consequential"],
+      "description": "none = read-only. idempotent = mutating but safe to retry and low-stakes. consequential = costs money, is irreversible, affects a third party, or changes a security/access boundary. Drives which other contracts (idempotency, async, guardrail) apply — see constitution.md."
+    },
+    "costTier": {
+      "type": "string",
+      "enum": ["free", "low", "medium", "high"],
+      "description": "Rough operational or financial cost of one call, for an agent or its budget-aware orchestrator to weigh before calling. Required when sideEffects is 'consequential'."
+    },
+    "latencyBudgetMs": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum acceptable synchronous latency before this action MUST instead be exposed via the async job contract. Default 2000 if unspecified."
+    },
+    "requiresDryRun": {
+      "type": "boolean",
+      "description": "MUST be true when sideEffects is 'consequential' (constitution.md, Article 5)."
+    },
+    "idempotent": {
+      "type": "boolean",
+      "description": "MUST be true (with an idempotency key required in inputSchema) whenever sideEffects is not 'none' (constitution.md, Article 3)."
+    },
+    "inputSchema": {
+      "type": "object",
+      "description": "A full JSON Schema for this action's parameters. Every required field must actually be required here — no undocumented required fields discovered only via a runtime error."
+    },
+    "outputSchema": {
+      "type": "object",
+      "description": "A full JSON Schema for this action's successful result shape."
+    },
+    "errors": {
+      "type": "array",
+      "description": "Failure modes this action can produce, each corresponding to an entry in this action's error mapping table (error-envelope.schema.json).",
+      "items": {
+        "type": "object",
+        "required": ["code", "retryable"],
+        "properties": {
+          "code": { "type": "string" },
+          "retryable": { "type": "boolean" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "specRef": {
+      "type": "string",
+      "description": "Path to the action-spec.md this manifest entry was generated from. Required so the manifest is traceable back to a source of truth (constitution.md, Article 0) — never generated ad hoc."
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "sideEffects": { "const": "consequential" } } },
+      "then": { "required": ["requiresDryRun", "costTier"] }
+    },
+    {
+      "if": {
+        "properties": { "sideEffects": { "enum": ["idempotent", "consequential"] } }
+      },
+      "then": { "required": ["idempotent"] }
+    }
+  ]
+}

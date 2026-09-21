@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-action-layer/contract/async-job.schema.json",
+  "title": "Async Job",
+  "description": "Any action whose worst-case latency can exceed its manifest latencyBudgetMs MUST be exposed this way instead of as a blocking call (constitution.md, Article 4). Two operations: submit (returns this shape immediately, status='pending') and getStatus(jobId) (returns this shape, current status). Never a bare synchronous call with a long timeout.",
+  "type": "object",
+  "required": ["jobId", "status", "createdAt"],
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "description": "Opaque identifier the agent stores and polls with. Must be stable across the job's lifetime."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "running", "succeeded", "failed", "cancelled"]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "progress": {
+      "type": "object",
+      "description": "Optional coarse progress signal so an agent can decide whether to keep polling or report back to its own caller.",
+      "properties": {
+        "percentComplete": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "message": { "type": "string" }
+      }
+    },
+    "pollAfterMs": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Suggested minimum delay before the next getStatus call. Present on pending/running responses. Prevents agents from busy-polling."
+    },
+    "result": {
+      "description": "Present only when status is 'succeeded'. Shape matches the wrapped action's outputSchema.",
+      "type": ["object", "null"]
+    },
+    "error": {
+      "description": "Present only when status is 'failed'. Shape matches error-envelope.schema.json's error object.",
+      "type": ["object", "null"]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "succeeded" } } },
+      "then": { "required": ["result"] }
+    },
+    {
+      "if": { "properties": { "status": { "const": "failed" } } },
+      "then": { "required": ["error"] }
+    }
+  ]
+}
