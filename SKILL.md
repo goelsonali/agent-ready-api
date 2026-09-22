@@ -12,14 +12,6 @@ description: Use when an existing API (REST, RPC, GraphQL, internal service — 
 
 ## What this is
 
-APIs drift from their spec, their contracts, and their documentation. That's not a new
-problem — it's the same failure mode spec-driven development exists to prevent, just
-showing up at a different interface. Human-facing APIs drifted from their docs for twenty
-years and teams tolerated it because a developer reading a 400 error could still figure it
-out. Agents can't. They don't read prose docs, can't negotiate an ambiguous error, can't
-sit through a 45-second synchronous call, and shouldn't be trusted to fire an irreversible
-action with no way to preview it first.
-
 The Agentic Action Layer is the middleware that sits between an agent and an existing API
 and closes that gap — without touching the underlying API's implementation. This skill
 generates one, for a specific set of operations you choose, grounded in a written spec
