@@ -117,7 +117,7 @@ the skill generates lands **inside your target project**; nothing here changes w
 
 For a full worked example — the refund endpoint from the quick-start, taken all the way
 through manifest, error table, idempotency, and the two-step guardrail call sequence — see
-`examples/worked-example-refund.md`.
+`examples/worked-example-refund.md`. or [sample project](https://github.com/goelsonali/reading-log)
 
 ## FAQ
 
@@ -136,10 +136,3 @@ to already know.
 
 **Can I use function-calling schemas or an OpenAPI overlay instead of MCP?** Yes — same
 manifest either way (step 5); only the outer projection changes.
-
-## Talk
-
-Built for "Agent-Ready APIs: The Layer You're Not Building Yet" — API Days London. The five
-contracts are the "five things agents need" from the talk; `examples/worked-example-refund.md`
-is the walk-through of wrapping a real API; `contract/constitution.md` is the middleware
-pattern stated as enforceable rules rather than an adjective.
